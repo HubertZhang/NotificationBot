@@ -85,8 +85,8 @@ class HackBot(BotPlugin):
 
         for user in self.db.execute("SELECT user.user_id, username, first_name, last_name,"
                                     " language_code, start_time, latest_hack_time "
-                                    "FROM user JOIN latest_hack "
-                                    "WHERE user.user_id=latest_hack.user_id"):
+                                    "FROM user LEFT OUTER JOIN latest_hack "
+                                    "ON user.user_id=latest_hack.user_id"):
             self.users[user[0]] = HackUser(*user)
             self.events[user[0]] = []
             self.message_records[user[0]] = []
