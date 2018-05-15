@@ -25,6 +25,7 @@ has another way to reference private data (besides global variables).
 
 import heapq
 import time
+import traceback
 from collections import namedtuple
 
 try:
@@ -108,7 +109,8 @@ class scheduler_condition:
 
         """
         with self._lock:
-            self._queue.remove(event)
+            if event in self._queue:
+                self._queue.remove(event)
             heapq.heapify(self._queue)
             # self._lock.notify()
 
@@ -167,7 +169,10 @@ class scheduler_condition:
                     self._lock.wait(time - now)
                 # delayfunc(time - now)
             else:
-                action(*argument, **kwargs)
+                try:
+                    action(*argument, **kwargs)
+                except Exception:
+                    traceback.print_exc()
                 delayfunc(0)  # Let other threads run
 
     @property
