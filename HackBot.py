@@ -40,23 +40,6 @@ if DEBUG:
     time_remain = [55, 45, 35, 25, 15, 5]
 
 
-class User:
-    def __init__(self, user_id, username, first_name, last_name, language_code):
-        self.user_id = int(user_id)
-        self.username = username
-        self.first_name = first_name
-        self.last_name = last_name
-        self.language_code = language_code
-
-    @property
-    def name(self):
-        if self.username:
-            return '@%s' % self.username
-        if self.last_name:
-            return '%s %s' % (self.first_name, self.last_name)
-        return self.first_name
-
-
 class HackUser(User):
     def __init__(self, user_id, username, first_name, last_name, language_code, start_time, time_setting,
                  last_hack_time):
