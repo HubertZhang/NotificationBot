@@ -30,13 +30,13 @@ def time_interval_to_remain(interval: int):
     if interval < 0:
         return "no time"
     s = []
-    if interval > DAY_SECONDS:
+    if interval >= DAY_SECONDS:
         s.append("%d days" % (interval // DAY_SECONDS))
         interval = interval % DAY_SECONDS
-    if interval > HOUR_SECONDS:
+    if interval >= HOUR_SECONDS:
         s.append("%d hours" % (interval // HOUR_SECONDS))
         interval = interval % HOUR_SECONDS
-    if interval > MINUTE_SECONDS:
+    if interval >= MINUTE_SECONDS:
         s.append("%d minutes" % (interval // MINUTE_SECONDS))
         interval = interval % MINUTE_SECONDS
     else:
