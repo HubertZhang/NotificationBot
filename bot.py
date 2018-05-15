@@ -44,4 +44,4 @@ if __name__ == '__main__':
     updater.dispatcher.add_handler(CommandHandler([hackBot.prefix], handleCommands, pass_args=True))
     updater.dispatcher.add_handler(CallbackQueryHandler(handleCallBackQuery))
     updater.dispatcher.add_error_handler(telegram_error)
-    updater.start_polling()
+    updater.start_polling(clean=True)
