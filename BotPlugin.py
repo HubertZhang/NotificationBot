@@ -14,7 +14,7 @@ def previous_day_start(start_time):
     return math.floor((time.time() - start_time) / DAY_SECONDS) * DAY_SECONDS + start_time
 
 
-def timestamp_to_str(t: int):
+def timestamp_to_str(t: float):
     timezone_local = pytz.FixedOffset(480)
     dt = pytz.utc.localize(datetime.utcfromtimestamp(t))
     return dt.astimezone(timezone_local).strftime("%Y-%m-%d %H:%M:%S")
@@ -27,8 +27,11 @@ def day_time_to_str(t: int):
 
 
 def time_interval_to_remain(interval: int):
-    if interval < 0:
+    interval = int(interval)
+    if interval <= 0:
         return "no time"
+    if interval < MINUTE_SECONDS:
+        return "less than one minutes"
     s = []
     if interval >= DAY_SECONDS:
         s.append("%d days" % (interval // DAY_SECONDS))
@@ -38,9 +41,6 @@ def time_interval_to_remain(interval: int):
         interval = interval % HOUR_SECONDS
     if interval >= MINUTE_SECONDS:
         s.append("%d minutes" % (interval // MINUTE_SECONDS))
-        interval = interval % MINUTE_SECONDS
-    else:
-        s.append("less than one minutes")
     return " ".join(s)
 
 
