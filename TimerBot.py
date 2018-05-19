@@ -7,8 +7,6 @@ from typing import Dict, List
 import sched_cond
 from BotPlugin import *
 
-DEBUG = True
-
 
 class TimerBot(BotPlugin):
     prefix = "timer"

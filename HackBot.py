@@ -8,8 +8,6 @@ from typing import Dict, List
 import sched_cond
 from BotPlugin import *
 
-DEBUG = False
-
 time_remain_template = "Please remember to hack a portal! {} remaining."
 
 time_remain = [

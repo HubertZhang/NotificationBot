@@ -5,6 +5,8 @@ from datetime import datetime
 import pytz
 import telegram
 
+DEBUG = False
+
 DAY_SECONDS = 24 * 60 * 60
 HOUR_SECONDS = 60 * 60
 MINUTE_SECONDS = 60
@@ -59,6 +61,7 @@ class User:
         if self.last_name:
             return '%s %s' % (self.first_name, self.last_name)
         return self.first_name
+
 
 class BotPlugin:
     prefix = ""
