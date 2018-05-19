@@ -78,6 +78,8 @@ class HackBot(BotPlugin):
 
     def setup_timer(self, user_id):
         u = self.users[user_id]
+        if u.start_time < 0:
+            return
         start_time = u.start_time
         previous_day = previous_day_start(start_time)
         next_day = previous_day_start(start_time) + DAY_SECONDS
@@ -107,18 +109,15 @@ class HackBot(BotPlugin):
 
     def change_time(self, user: telegram.User, start_time):
         u = self.users[user.id]
-        if u.timer_setting is not None:
-            new_setting = [(x + start_time - u.start_time + DAY_SECONDS) % DAY_SECONDS for x in u.timer_setting]
-            new_setting.sort(reverse=True)
-            u.timer_setting = new_setting
-        u.start_time = start_time
         u.last_hack_time = None
         for event in u.timers:
             self.scheduler.cancel(event)
         u.timers = []
         if u.main_timer is not None:
             self.scheduler.cancel(u.main_timer)
+            u.main_timer = None
 
+        u.start_time = start_time
         self.db.execute(
             "UPDATE user "
             "SET username=?,"
@@ -129,6 +128,11 @@ class HackBot(BotPlugin):
             "WHERE user_id=?",
             (user.username, user.first_name, user.last_name, user.language_code, start_time, user.id))
         self.db.commit()
+        if start_time >= 0:
+            if u.timer_setting is not None:
+                new_setting = [(x + start_time - u.start_time + DAY_SECONDS) % DAY_SECONDS for x in u.timer_setting]
+                new_setting.sort(reverse=True)
+                u.timer_setting = new_setting
 
         self.setup_timer(user.id)
 
@@ -139,6 +143,7 @@ class HackBot(BotPlugin):
         u.timers = []
         if u.main_timer is not None:
             self.scheduler.cancel(u.main_timer)
+            u.main_timer = None
 
         u.timer_setting = time_setting
         if time_setting is not None:
@@ -233,6 +238,12 @@ class HackBot(BotPlugin):
                     "\n".join([day_time_to_str(u.start_time - x) for x in setting])
 
             return reply
+        if parameters[0] == "stop":
+            if self.users.get(user.id) is not None:
+                self.change_time(user, -1)
+                return "Timers removed."
+            else:
+                return "You haven't set up the timer."
         return ""
 
     def handle_callback(self, callback: telegram.CallbackQuery):
@@ -312,7 +323,7 @@ class HackBot(BotPlugin):
         if u.last_hack_time is not None and u.last_hack_time > current_day:
             return
 
-        if seq < 0:
+        if seq < 0 and u.last_hack_time is not None:
             seq = -seq - 1
             delay = emergency_remain[seq]
             msg = thirty_six_template.format(time_interval_to_remain(delay))
