@@ -7,6 +7,7 @@ from telegram.ext import Updater, CallbackQueryHandler, CommandHandler
 from BotPlugin import BotPlugin
 from HackBot import HackBot
 from TimerBot import TimerBot
+from PillBot import PillBot
 from config import *
 
 BotPlugins: List[BotPlugin] = []
@@ -43,16 +44,18 @@ def telegram_error(bot, update, error):
 
 if __name__ == '__main__':
     # global hackBot
-    updater = Updater(BOT_TOKEN, request_kwargs={'proxy_url': 'socks5://127.0.0.1:8889/'})
+    updater = Updater(BOT_TOKEN, request_kwargs=request_kwargs)
 
     bot = updater.bot
     hackBot = HackBot(bot)
     timerBot = TimerBot(bot)
+    pillBot = PillBot(bot)
     BotPlugins.append(hackBot)
     BotPlugins.append(timerBot)
+    BotPlugins.append(pillBot)
 
     updater.logger = root
-    updater.dispatcher.add_handler(CommandHandler([hackBot.prefix, timerBot.prefix], handleCommands, pass_args=True))
+    updater.dispatcher.add_handler(CommandHandler([x.prefix for x in BotPlugins], handleCommands, pass_args=True))
     updater.dispatcher.add_handler(CallbackQueryHandler(handleCallBackQuery))
     updater.dispatcher.add_error_handler(telegram_error)
     updater.start_polling(clean=True)
