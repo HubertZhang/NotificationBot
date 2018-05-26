@@ -64,8 +64,8 @@ class HackBot(BotPlugin):
         threading.Thread(target=self.scheduler.run).start()
         self.users: Dict[int, HackUser] = dict()
 
-        for user in self.db.execute("SELECT user.user_id, username, first_name, last_name,"
-                                    " language_code, start_time, time_setting, latest_hack_time "
+        for user in self.db.execute("SELECT user.user_id, username, first_name, last_name, "
+                                    "language_code, start_time, time_setting, latest_hack_time "
                                     "FROM user LEFT OUTER JOIN latest_hack "
                                     "ON user.user_id=latest_hack.user_id"):
             if DEBUG:
@@ -238,10 +238,10 @@ class HackBot(BotPlugin):
             return reply
         if parameters[0] == "stop":
             if self.users.get(user.id) is not None:
-                self.change_time(user, -1)
-                return "Timers removed."
-            else:
-                return "You haven't set up the timer."
+                if self.users[user.id].start_time > 0:
+                    self.change_time(user, -1)
+                    return "Timers removed."
+            return "You haven't set up the timer."
         return ""
 
     def handle_callback(self, callback: telegram.CallbackQuery):
