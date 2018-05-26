@@ -105,7 +105,7 @@ class TimerBot(BotPlugin):
         u = self.events[user_id]
         u.remove(kwargs["event"])
         if description != "":
-            msg = escape("Time's up! Timer description:\n{}".format(description))
+            msg = "Time's up! Timer description:\n"+escape(description, quote=False)
         else:
             msg = "Time's up! {} elapsed.".format(time_interval_to_remain(delay))
         try:
