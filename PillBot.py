@@ -43,11 +43,9 @@ class PillBot(BotPlugin):
             if DEBUG:
                 if record[1] != 70166446:
                     continue
-            print(record[1])
             user = self.db.execute(
                 "SELECT user_id, username, first_name, last_name, language_code FROM main.user WHERE user_id = ?",
                 [record[1]]).fetchone()
-            print(*user)
             self.users[record[1]] = User(*user)
             self.records[record[0]] = PillRecord(*record[1:])
             self.setup_timer(record[0])
@@ -82,7 +80,7 @@ class PillBot(BotPlugin):
     def get_user(self, user_id):
         u = self.users.get(user_id)
         if u is None:
-            user = self.db.execute("SELECT * FROM main.user WHERE user_id = ?", [user_id])
+            user = self.db.execute("SELECT * FROM main.user WHERE user_id = ?", [user_id]).fetchone()
 
             if user is None:
                 return User(user_id, str(user_id), "", "", "")
