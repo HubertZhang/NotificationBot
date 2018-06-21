@@ -296,6 +296,7 @@ class HackBot(BotPlugin):
                     u.timers.append(self.scheduler.enterabs(last_hack_time + 36 * HOUR_SECONDS - emergency_remain[0], 3,
                                                             self.timer_fired,
                                                             argument=(user_id, -1)))
+                    break
 
         button = telegram.InlineKeyboardButton("Portal hacked", callback_data=self.prefix + str(user_id))
 
