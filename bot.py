@@ -35,7 +35,8 @@ def handleCommands(bot: telegram.Bot, update: telegram.Update, args):
     for plugin in BotPlugins:
         if plugin.prefix == command:
             ret = plugin.handle_command(update.message.from_user, update.message.chat, args)
-            update.message.reply_text(ret, parse_mode="HTML")
+            if ret != "":
+                update.message.reply_text(ret, parse_mode="HTML")
 
 
 def telegram_error(bot, update, error):

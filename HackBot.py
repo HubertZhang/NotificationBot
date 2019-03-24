@@ -9,7 +9,6 @@ import sched_cond
 from BotPlugin import *
 
 time_remain_template = "Please remember to hack a portal! {} remaining."
-
 time_remain = [
     18 * HOUR_SECONDS,
     12 * HOUR_SECONDS,
@@ -23,7 +22,9 @@ time_remain = [
     1 * MINUTE_SECONDS,
 ]
 
-thirty_six_template = "Your previous hack is too early. Please remember to hack a portal within 36h after previous hack! {} remaining."
+thirty_six_template = "Your previous hack is too early. " \
+                      "Please remember to hack a portal within 36h " \
+                      "after previous hack! {} remaining."
 emergency_remain = [
     3 * HOUR_SECONDS,
     2 * HOUR_SECONDS,
@@ -78,14 +79,11 @@ class HackBot(BotPlugin):
         u = self.users[user_id]
         if u.start_time < 0:
             return
-        start_time = u.start_time
-        previous_day = previous_day_start(start_time)
-        next_day = previous_day_start(start_time) + DAY_SECONDS
+        next_day = previous_day_start(u.start_time) + DAY_SECONDS
         if u.timer_setting is None:
             timer_setting = time_remain
         else:
             timer_setting = u.timer_setting
-            print(timer_setting)
         for i, delay in enumerate(timer_setting):
             if next_day - delay > time.time():
                 u.timers.append(
@@ -163,86 +161,118 @@ class HackBot(BotPlugin):
     def add_record(self, user_id, date):
         if self.users.get(user_id) is None:
             return
-        self.users[user_id].last_hack_time = date
-        self.db.execute("INSERT INTO hack_record VALUES (?,?)", (user_id, date))
-        self.db.commit()
+        if self.users[user_id].last_hack_time is None or date > self.users[user_id].last_hack_time:
+            self.users[user_id].last_hack_time = date
+            self.db.execute("INSERT INTO hack_record VALUES (?,?)", (user_id, date))
+            self.db.commit()
 
     def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: [str]):
         if len(parameters) == 0:
             return "<code>/hack start hh:mm</code>  set the start point of each \"hack\" day (UTC+8)\n" \
                    "<code>/hack status</code>       list all following timers\n" \
-                   "<code>/hack alarm hh:mm hh:mm ...</code>      set time for notifications \n"
+                   "<code>/hack alarm hh:mm hh:mm ...</code>      set time for notifications \n" \
+                   "<code>/hack stop</code>      stop notifications \n" \
+                   "<code>/hack record hh:mm</code>      record hack time in previous day \n"
         if parameters[0] == "start":
-            if len(parameters) != 2:
-                return "Please set time. Format: hh:mm in UTC+8"
-            start = parameters[1]
-            r = re.search("(\\d{1,2}):(\\d{1,2})", start)
+            return self._handle_start(parameters, user)
+        if parameters[0] == "status":
+            return self._handle_status(parameters, user)
+        if parameters[0] == "alarm":
+            return self._handle_alarm(parameters, user)
+        if parameters[0] == "stop":
+            return self._handle_stop(parameters, user)
+        if parameters[0] == "record":
+            return self._handle_record(parameters, user)
+        return ""
+
+    def _handle_record(self, parameters: List[str], user: telegram.User):
+        if self.users.get(user.id) is None:
+            return "Please set day start time first"
+        u = self.users[user.id]
+        if len(parameters) != 2:
+            return "Format error! Please provide hack times. Format: \nhh:mm in UTC+8"
+        s = parameters[1]
+        r = re.search("(\\d{1,2}):(\\d{1,2})", s)
+        if r is None:
+            return "Format error! Please provide hack times. Format: \nhh:mm in UTC+8"
+        h = int(r.group(1))
+        h = (h + 16) % 24
+        m = int(r.group(2))
+        new_time = (h * 60 + m) * 60
+        t = previous_day_start(u.start_time) + new_time
+        self.add_record(user.id, t)
+
+    def _handle_stop(self, parameters: List[str], user: telegram.User):
+        if self.users.get(user.id) is not None:
+            if self.users[user.id].start_time > 0:
+                self.change_time(user, -1)
+                return "Timers removed."
+        return "You haven't set up the timer."
+
+    def _handle_alarm(self, parameters: List[str], user: telegram.User):
+        if self.users.get(user.id) is None:
+            return "Please set day start time first"
+        if len(parameters) == 1:
+            return escape("Please provide alarm times. Format: \nhh:mm <hh:mm> <hh:mm>... in UTC+8")
+        if parameters[1] == "reset":
+            self.change_time_setting(user, None)
+            return "Alarms reset to default."
+        u = self.users[user.id]
+        setting = []
+        for s in parameters[1:]:
+            r = re.search("(\\d{1,2}):(\\d{1,2})", s)
             if r is None:
-                return "Format error! Please set time. Format: hh:mm in UTC+8"
+                return escape(
+                    "Format error! Please provide alarm times. Format: \nhh:mm <hh:mm> <hh:mm>... in UTC+8")
             h = int(r.group(1))
             h = (h + 16) % 24
             m = int(r.group(2))
-            if self.users.get(user.id) is not None:
-                self.change_time(user, (h * 60 + m) * 60)
-                return "Changed"
-            else:
-                self.add_user(user, (h * 60 + m) * 60)
-                return "Set"
-        if parameters[0] == "status":
-            if self.users.get(user.id) is None:
-                return "No timer is set"
-            u = self.users[user.id]
-            reply = "Current timers:\n"
+            new_time = (h * 60 + m) * 60
+            new_time = (u.start_time - new_time + DAY_SECONDS) % DAY_SECONDS
+            setting.append(new_time)
+        setting.sort(reverse=True)
+        self.change_time_setting(user, setting)
+        reply = "You will receive notification at:\n" + \
+                "\n".join([day_time_to_str(u.start_time - x) for x in setting])
+        return reply
 
-            if u.timer_setting is not None:
-                setting = u.timer_setting
-            else:
-                setting = time_remain
-            i = 0
-            for x in u.timers:
-                while x.argument[1] > i:
-                    reply += "{} (past)\n".format(day_time_to_str(u.start_time - setting[i]))
-                    i += 1
-                reply += "{} (set)\n".format(day_time_to_str(u.start_time - setting[i]))
-            i += 1
-            for j in range(i, len(setting)):
-                reply += "{} (will set)\n".format(day_time_to_str(u.start_time - setting[j]))
-            reply += "{} (next day)\n".format(day_time_to_str(u.start_time))
-            return reply
-        if parameters[0] == "alarm":
-            if self.users.get(user.id) is None:
-                return "Please set day start time first"
-            if len(parameters) == 1:
-                return escape("Please provide alarm times. Format: \nhh:mm <hh:mm> <hh:mm>... in UTC+8")
-            if parameters[1] == "reset":
-                self.change_time_setting(user, None)
-                return "Alarms reset to default."
-            u = self.users[user.id]
-            setting = []
-            for s in parameters[1:]:
-                r = re.search("(\\d{1,2}):(\\d{1,2})", s)
-                if r is None:
-                    return escape(
-                        "Format error! Please provide alarm times. Format: \nhh:mm <hh:mm> <hh:mm>... in UTC+8")
-                h = int(r.group(1))
-                h = (h + 16) % 24
-                m = int(r.group(2))
-                new_time = (h * 60 + m) * 60
-                new_time = (u.start_time - new_time + DAY_SECONDS) % DAY_SECONDS
-                setting.append(new_time)
-            setting.sort(reverse=True)
-            self.change_time_setting(user, setting)
-            reply = "You will receive notification at:\n" + \
-                    "\n".join([day_time_to_str(u.start_time - x) for x in setting])
+    def _handle_status(self, parameters: List[str], user: telegram.User):
+        if self.users.get(user.id) is None:
+            return "No timer is set"
+        u = self.users[user.id]
+        reply = "Current timers:\n"
+        if u.timer_setting is not None:
+            setting = u.timer_setting
+        else:
+            setting = time_remain
+        i = 0
+        for x in u.timers:
+            while x.argument[1] > i:
+                reply += "{} (past)\n".format(day_time_to_str(u.start_time - setting[i]))
+                i += 1
+            reply += "{} (set)\n".format(day_time_to_str(u.start_time - setting[i]))
+        i += 1
+        for j in range(i, len(setting)):
+            reply += "{} (will set)\n".format(day_time_to_str(u.start_time - setting[j]))
+        reply += "{} (next day)\n".format(day_time_to_str(u.start_time))
+        return reply
 
-            return reply
-        if parameters[0] == "stop":
-            if self.users.get(user.id) is not None:
-                if self.users[user.id].start_time > 0:
-                    self.change_time(user, -1)
-                    return "Timers removed."
-            return "You haven't set up the timer."
-        return ""
+    def _handle_start(self, parameters: List[str], user: telegram.User):
+        if len(parameters) != 2:
+            return "Please set time. Format: hh:mm in UTC+8"
+        start = parameters[1]
+        r = re.search("(\\d{1,2}):(\\d{1,2})", start)
+        if r is None:
+            return "Format error! Please set time. Format: hh:mm in UTC+8"
+        h = int(r.group(1))
+        h = (h + 16) % 24
+        m = int(r.group(2))
+        if self.users.get(user.id) is not None:
+            self.change_time(user, (h * 60 + m) * 60)
+            return "Changed"
+        else:
+            self.add_user(user, (h * 60 + m) * 60)
+            return "Set"
 
     def handle_callback(self, callback: telegram.CallbackQuery):
         user_id = callback.from_user.id
@@ -333,13 +363,12 @@ class HackBot(BotPlugin):
                                             argument=(user_id, -seq - 2)))
 
         else:
-            delay = time_remain[seq]
-            msg = time_remain_template.format(time_interval_to_remain(delay))
             if u.timer_setting is None:
                 setting = time_remain
             else:
                 setting = u.timer_setting
-
+            delay = setting[seq]
+            msg = time_remain_template.format(time_interval_to_remain(delay))
             if seq + 1 < len(setting):
                 u.timers.append(
                     self.scheduler.enterabs(current_day + DAY_SECONDS - setting[seq + 1], 3, self.timer_fired,
