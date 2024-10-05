@@ -97,7 +97,7 @@ class TimerBot(BotPlugin):
         u.append(event)
         return "Timer set"
 
-    def timer_fired(self, user_id, delay: int, description: str, **kwargs):
+    async def timer_fired(self, user_id, delay: int, description: str, **kwargs):
         logging.debug("fire time: {}".format(timestamp_to_str(kwargs["event"].time)))
         u = self.events[user_id]
         u.remove(kwargs["event"])
@@ -106,7 +106,7 @@ class TimerBot(BotPlugin):
         else:
             msg = "Time's up! {} elapsed.".format(time_interval_to_remain(delay))
         try:
-            message = self.bot.send_message(user_id, msg)
+            await self.bot.send_message(user_id, msg)
         except telegram.error.TelegramError as e:
             print(e)
             return

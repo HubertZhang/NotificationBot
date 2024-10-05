@@ -53,7 +53,7 @@ class PillBot(BotPlugin):
         new_day = previous_day_start(0) + DAY_SECONDS
         self.main_timer = self.scheduler.enterabs(new_day, 1, self.new_day)
 
-    def new_day(self, **kwargs):
+    async def new_day(self, **kwargs):
         logging.debug("new day: {}".format(timestamp_to_str(time.time())))
         new_day = previous_day_start(0) + DAY_SECONDS
         self.main_timer = self.scheduler.enterabs(new_day, 1, self.new_day)
@@ -238,7 +238,7 @@ class PillBot(BotPlugin):
 
         return "Hack time recorded", False
 
-    def timer_fired(self, record_id, **kwargs):
+    async def timer_fired(self, record_id, **kwargs):
         logging.debug("fire time: {}".format(timestamp_to_str(kwargs["event"].time)))
         r = self.records.get(record_id)
         if r is None:
@@ -254,6 +254,6 @@ class PillBot(BotPlugin):
         msg = "Hi {}, yet another day! {}".format(user.name, description)
 
         try:
-            message = self.bot.send_message(r.chat_id, msg)
+            await self.bot.send_message(r.chat_id, msg)
         except telegram.error.TelegramError:
             return

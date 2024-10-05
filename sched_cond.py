@@ -23,6 +23,7 @@ The action function may be an instance method so it
 has another way to reference private data (besides global variables).
 """
 
+import asyncio
 import heapq
 import time
 import traceback
@@ -30,11 +31,12 @@ from collections import namedtuple
 
 import threading
 from time import monotonic as _time
+from typing import Any, Callable, Coroutine, List, NamedTuple
 
 __all__ = ["scheduler_condition"]
 
 
-class Event(namedtuple("Event", "time, priority, action, argument, kwargs")):
+class Event(NamedTuple):
     """
     Event(time, priority, action, argument, kwargs)
 
@@ -47,6 +49,11 @@ class Event(namedtuple("Event", "time, priority, action, argument, kwargs")):
         argument: A sequence holding the positional arguments for the action.
         kwargs: A dictionary holding the keyword arguments for the action.
     """
+    time: float
+    priority: int
+    action: Callable[..., Coroutine]
+    argument: tuple
+    kwargs: Any
 
     __slots__ = []
 
@@ -73,14 +80,16 @@ class scheduler_condition:
     def __init__(self, timefunc=_time, delayfunc=time.sleep):
         """Initialize a new instance, passing the time and delay
         functions"""
-        self._queue = []
+        self._queue: List[Event] = []
         self._lock = threading.Condition()
         # self._event = threading.Event()
         # self._running = True
         self.timefunc = timefunc
         self.delayfunc = delayfunc
 
-    def enterabs(self, time, priority, action, argument=(), kwargs=_sentinel):
+        self.running_loop = asyncio.new_event_loop()
+
+    def enterabs(self, time, priority, action: Callable[..., Coroutine], argument=(), kwargs=_sentinel):
         """Enter a new event in the queue at an absolute time.
 
         Returns an ID for the event which can be used to remove it,
@@ -95,7 +104,7 @@ class scheduler_condition:
             self._lock.notify()
         return event  # The ID
 
-    def enter(self, delay, priority, action, argument=(), kwargs=_sentinel):
+    def enter(self, delay, priority, action: Callable[..., Coroutine], argument=(), kwargs=_sentinel):
         """A variant that specifies the time as a relative time.
 
         This is actually the more commonly used interface.
@@ -154,6 +163,8 @@ class scheduler_condition:
         timefunc = self.timefunc
         pop = heapq.heappop
 
+        threading.Thread(target=self.running_loop.run_forever).start()
+
         while True:
             with lock:
                 while not q:
@@ -173,10 +184,11 @@ class scheduler_condition:
                 # delayfunc(time - now)
             else:
                 try:
-                    action(*argument, **kwargs)
+                    self.running_loop.create_task(action(*argument, **kwargs))
                 except Exception:
                     traceback.print_exc()
                 delayfunc(0)  # Let other threads run
+        self.running_loop.close()
 
     @property
     def queue(self):
