@@ -55,8 +55,6 @@ class Event(NamedTuple):
     argument: tuple
     kwargs: Any
 
-    __slots__ = []
-
     def __eq__(self, o):
         return (self.time, self.priority) == (o.time, o.priority)
 
@@ -77,7 +75,7 @@ _sentinel = object()
 
 class scheduler_condition:
 
-    def __init__(self, timefunc=_time, delayfunc=time.sleep):
+    def __init__(self, timefunc=_time, delayfunc=time.sleep, loop=None):
         """Initialize a new instance, passing the time and delay
         functions"""
         self._queue: List[Event] = []
@@ -87,7 +85,7 @@ class scheduler_condition:
         self.timefunc = timefunc
         self.delayfunc = delayfunc
 
-        self.running_loop = asyncio.new_event_loop()
+        self.running_loop = loop or asyncio.get_event_loop()
 
     def enterabs(self, time, priority, action: Callable[..., Coroutine], argument=(), kwargs=_sentinel):
         """Enter a new event in the queue at an absolute time.
@@ -163,8 +161,6 @@ class scheduler_condition:
         timefunc = self.timefunc
         pop = heapq.heappop
 
-        threading.Thread(target=self.running_loop.run_forever).start()
-
         while True:
             with lock:
                 while not q:
@@ -184,11 +180,10 @@ class scheduler_condition:
                 # delayfunc(time - now)
             else:
                 try:
-                    self.running_loop.create_task(action(*argument, **kwargs))
+                    asyncio.run_coroutine_threadsafe(action(*argument, **kwargs), self.running_loop).result()
                 except Exception:
                     traceback.print_exc()
                 delayfunc(0)  # Let other threads run
-        self.running_loop.close()
 
     @property
     def queue(self):
