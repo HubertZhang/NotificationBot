@@ -22,7 +22,7 @@ class TimerBot(BotPlugin):
         event = self.scheduler.enter(delay, 3, self.timer_fired, argument=(user_id, delay, description))
         u.append(event)
 
-    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: [str]):
+    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: List[str]):
         if len(parameters) == 0:
             return "<code>/timer mm &lt;description&gt;</code>     set a timer after <code>mm</code> minutes\n" \
                    "<code>/timer hh:mm &lt;description&gt;</code>  set a timer after <code>hh</code> hours and <code>mm</code> minutes\n" \
@@ -97,9 +97,6 @@ class TimerBot(BotPlugin):
         u.append(event)
         return "Timer set"
 
-    def handle_callback(self, callback: telegram.CallbackQuery):
-        return "", False
-
     def timer_fired(self, user_id, delay: int, description: str, **kwargs):
         logging.debug("fire time: {}".format(timestamp_to_str(kwargs["event"].time)))
         u = self.events[user_id]
@@ -110,6 +107,6 @@ class TimerBot(BotPlugin):
             msg = "Time's up! {} elapsed.".format(time_interval_to_remain(delay))
         try:
             message = self.bot.send_message(user_id, msg)
-        except telegram.TelegramError as e:
+        except telegram.error.TelegramError as e:
             print(e)
             return

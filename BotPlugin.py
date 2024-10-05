@@ -1,6 +1,7 @@
 import math
 import time
 from datetime import datetime
+from typing import List, Optional, Tuple
 
 import pytz
 import telegram
@@ -69,8 +70,8 @@ class BotPlugin:
     def __init__(self, bot: telegram.Bot):
         self.bot = bot
 
-    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: [str]):
+    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: List[str]) -> Optional[str]:
         return ""
 
-    def handle_callback(self, callback: telegram.CallbackQuery):
+    async def handle_callback(self, callback: telegram.CallbackQuery) -> Tuple[str, bool]:
         return "", False

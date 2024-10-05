@@ -28,39 +28,42 @@ import time
 import traceback
 from collections import namedtuple
 
-try:
-    import threading
-except ImportError:
-    import dummy_threading as threading
+import threading
 from time import monotonic as _time
 
 __all__ = ["scheduler_condition"]
 
 
-class Event(namedtuple('Event', 'time, priority, action, argument, kwargs')):
+class Event(namedtuple("Event", "time, priority, action, argument, kwargs")):
+    """
+    Event(time, priority, action, argument, kwargs)
+
+    A named tuple representing a scheduled event.
+
+    Attributes:
+        time: Numeric type compatible with the return value of the timefunc function passed to the constructor.
+        priority: Events scheduled for the same time will be executed in the order of their priority.
+        action: Executing the event means executing action(*argument, **kwargs).
+        argument: A sequence holding the positional arguments for the action.
+        kwargs: A dictionary holding the keyword arguments for the action.
+    """
+
     __slots__ = []
 
-    def __eq__(s, o): return (s.time, s.priority) == (o.time, o.priority)
+    def __eq__(self, o):
+        return (self.time, self.priority) == (o.time, o.priority)
 
-    def __lt__(s, o): return (s.time, s.priority) < (o.time, o.priority)
+    def __lt__(self, o):
+        return (self.time, self.priority) < (o.time, o.priority)
 
-    def __le__(s, o): return (s.time, s.priority) <= (o.time, o.priority)
+    def __le__(self, o):
+        return (self.time, self.priority) <= (o.time, o.priority)
 
-    def __gt__(s, o): return (s.time, s.priority) > (o.time, o.priority)
+    def __gt__(self, o):
+        return (self.time, self.priority) > (o.time, o.priority)
 
-    def __ge__(s, o): return (s.time, s.priority) >= (o.time, o.priority)
-
-
-Event.time.__doc__ = ('''Numeric type compatible with the return value of the
-timefunc function passed to the constructor.''')
-Event.priority.__doc__ = ('''Events scheduled for the same time will be executed
-in the order of their priority.''')
-Event.action.__doc__ = ('''Executing the event means executing
-action(*argument, **kwargs)''')
-Event.argument.__doc__ = ('''argument is a sequence holding the positional
-arguments for the action.''')
-Event.kwargs.__doc__ = ('''kwargs is a dictionary holding the keyword
-arguments for the action.''')
+    def __ge__(self, o):
+        return (self.time, self.priority) >= (o.time, o.priority)
 
 _sentinel = object()
 

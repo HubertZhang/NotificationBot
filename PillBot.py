@@ -3,7 +3,7 @@ import re
 import sqlite3
 import threading
 from html import escape
-from typing import Dict
+from typing import Dict, Optional
 
 import sched_cond
 from BotPlugin import *
@@ -25,7 +25,7 @@ class PillRecord:
         self.chat_id = chat_id
         self.alarm_time = alarm_time
         self.description = description
-        self.timer = None
+        self.timer: Optional[sched_cond.Event] = None
 
 
 class PillBot(BotPlugin):
@@ -95,6 +95,8 @@ class PillBot(BotPlugin):
                        (user_id, chat_id, alarm_time, description))
         record_id = cursor.lastrowid
         self.db.commit()
+        if record_id is None:
+            return -1
 
         self.records[record_id] = PillRecord(user_id, chat_id, alarm_time, description)
         self.setup_timer(record_id)
@@ -126,7 +128,7 @@ class PillBot(BotPlugin):
         self.db.commit()
         self.records[record_id].description = description
 
-    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: [str]):
+    def handle_command(self, user: telegram.User, chat: telegram.Chat, parameters: List[str]):
         if len(parameters) == 0:
             return "<code>/pill add hh:mm [description]</code>  set the notification time (UTC+8)\n" \
                    "<code>/pill list</code>       list all timers\n" \
@@ -149,7 +151,7 @@ class PillBot(BotPlugin):
             else:
                 description = escape(" ".join(parameters[2:]))
             self.update_user(user)
-            self.add_record(user.id, chat.id, (h * 60 + m) * 60, description)
+            self.add_record(user.id, chat.id, (h * 60 + m) * 60, description or "")
             return "Added"
         if parameters[0] == "list":
             reply = ""
@@ -212,7 +214,7 @@ class PillBot(BotPlugin):
             return "You haven't set up the timer."
         return ""
 
-    def handle_callback(self, callback: telegram.CallbackQuery):
+    async def handle_callback(self, callback: telegram.CallbackQuery):
         return "", False
         user_id = callback.from_user.id
         try:
@@ -253,5 +255,5 @@ class PillBot(BotPlugin):
 
         try:
             message = self.bot.send_message(r.chat_id, msg)
-        except telegram.TelegramError:
+        except telegram.error.TelegramError:
             return
